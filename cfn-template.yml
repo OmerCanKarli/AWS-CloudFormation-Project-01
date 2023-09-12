@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  This template launch an instance and create security group which enables SSH and HTTP.
+Parameters:
+  LatestAmiId:
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/al2023-ami-minimal-kernel-default-x86_64'   
+Resources:
+  MyInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: t2.micro
+      KeyName: firstkey
+      SecurityGroupIds: 
+        - !Ref MySecGrp
+      Tags: 
+        - Key : Name
+          Value : !Sub Web Server Of ${AWS::StackName} Stack
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          dnf update -y
+          dnf install httpd -y
+          dnf install wget -y
+          FOLDER="https://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@raw.githubusercontent.com/OmerCanKarli/AWS-CloudFormation-Project-01/main/static-web"
+          sudo chmod 777 /var/www/html
+          cd /var/www/html
+          wget ${FOLDER}/cat0.jpg
+          wget ${FOLDER}/cat1.jpg
+          wget ${FOLDER}/cat2.jpg
+          wget ${FOLDER}/index.html
+          systemctl start httpd
+          systemctl enable httpd
+  MySecGrp:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group that enables SSH and HTTP # Required
+      GroupName: Kittens Carousel Website SG
+      SecurityGroupIngress: 
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0  
+Outputs:
+  WebsiteURL:
+    Description: Kittens Carousel Application URL
+    Value: !Sub
+      - http://${PublicDNS}
+      - PublicDNS : !GetAtt MyInstance.PublicDnsName
